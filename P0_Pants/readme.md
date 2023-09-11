@@ -1,0 +1,3 @@
+Prototype of pants that light up when the wearer is walking. Pants have NeoPixel strips custom sized to each pantleg and a pocket to hold the Arduino components and power source. Leggings worn underneath the pants have one accelerometerper leg that detects the walking motion for each leg. (Leggings not required but allow for optimal motion sensing.) A push button toggles the pants off/on and a Piezo buzzer chimes to inform the state.
+
+This code is my own save for small snippets from Scott Marley's FastLED tutorial: https://github.com/s-marley/FastLED-basics and some bare-bone accelerometer code from Last Minute Engineer's accelerometer tutorial: https://lastminuteengineers.com/adxl335-accelerometer-arduino-tutorial/
