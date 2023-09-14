@@ -49,12 +49,12 @@ void setup() {
   
 
   /* Test to confirm strands are working */
-  Serial.println("Checking strands. Should be red for 5 seconds.");
+  Serial.println("Checking strands. Should be red for 3 seconds.");
   for(int testIndex = 0; testIndex<LED_COUNT;testIndex++){
     leds[testIndex] = CHSV(0, 255, 255);
   }
   FastLED.show();
-  delay(5000);
+  delay(3000);
   resetLights();
   Serial.println("Test completed. Looping now beginning.");
   delay(20);
@@ -62,132 +62,143 @@ void setup() {
 
 unsigned long motionTimeTaken = 0;
 
+/** Waterfall lighting variables
+* Columns of neopixels, all in a single array, but are toggled individually
+**/
+int col0 = 0; /* goes from 0 to 12, the largest stack of lights*/
+int col1 = 0; /* goes from 13 to 20 */
+int col2 = 0; /* goes from 21 to 25 */
+int col3 = 0; /* goes from 26 to 29 */
+bool midStep = false;
+
 void loop() {
   
   // if(buttonPressed()){
   //   togglePantsOnOff();
   // }
   if(pantsOn){
-      if(checkAccelerometerOneLeg()){/* Check if walking for a single leg*/
-        motionTimeTaken = millis();
-        if(millis()-motionTimeTaken<walkAlottedTime) {   
-          makeWaterfall();
-        } else {
-          /* don't trigger a new waterfall because user is still in a single step, but need to make sure the waterfall finishes*/
-        }
+    if(detectMovement()){/* Check if walking*/
+      midStep=true;
+      motionTimeTaken = millis(); // this might be in wrong spot?
+      if(millis()-motionTimeTaken<walkAlottedTime) {   
+        makeWaterfall(12);
+      } else {
+        /* don't trigger a new waterfall because user is still in a single step*/
       }
-      /*********************************/
-      
+    }
+    else {  /*Walking has stopped but the lights are still on, need to finish the lighting effect*/
+      if(midStep && col0<20){
+        makeWaterfall(20);
+      }
+    }
   }
   delay(10); /* Helps code run smoother*/
 }
 
-/** Waterfall lighting variables
-* Columns of neopixels, all in a single array, but are toggled individually
-**/
-  int col0 = 0; /* goes from 0 to 12, the largest stack of lights*/
-  int col1 = 0; /* goes from 13 to 20 */
-  int col2 = 0; /* goes from 21 to 25 */
-  int col3 = 0; /* goes from 26 to 29 */
+
+
 
 /**
-* Creates a light-up waterfall effect for a single leg. The lights turn off when done.
+* Creates a light-up waterfall effect for a single leg by lighting up lights from top of leg to bottom, with trailing effect.
+* Lights will trail for different period of time before turning off based on the col0StopCounter.
+* int col0StopCounter tells how many iterations to continue the waterfall before it should restart. Larger numbers allow the trail to finish before restarting
+* while smaller numbers will have lights restart the iteration sooner.
 **/
-void makeWaterfall() {
-    if(col0 > 12 ) {
-      col0 = 0; /* waterfall already completed, reset to 0 */
-    }
-    /*
-    This could be written as a 2D array to represent the different columns of lights, but since a large part of the array would be empty
-    since the lights are mostly on the bottom, it's better performance to keep this as a switch case that then checks for lights as the column counter increases.
-    */
-    switch(col0) {
-      case 0:
-      case 1:
-      case 2:
-      case 3:
-      case 4:
-        leds[col0]=CHSV(160, random8(), random8(100,255));
-        break;
-      case 5:
-      case 6:
-      case 7:
-        /* Neopixels index: 5,20,6,19,7,18*/
-        if(col0==5){
-          col1 = 20;
-        }
-        if(col0==6){
-          col1=19;
-        }
-        if(col0==7){
-          col1=18;
-        }
-        leds[col0]=CHSV(160, random8(), random8(100,255));
-        leds[col1]=CHSV(160, random8(), random8(100,255));
-        break;
-      case 8:
-        /* Neopixels index: 8,17,21 */
-        leds[col0]=CHSV(160, random8(), random8(100,255));
-        leds[17]=CHSV(160, random8(), random8(100,255));
-        leds[21]=CHSV(160, random8(), random8(100,255));
-        break;
-      case 9:
-      case 10:
-      case 11:
-      case 12:
-        /* Neopixels index: 9,16,22,29,10,15,23,28,11,14,24,27,12,13,25,26 */
-        if(col0==9){
-          col1 = 16;
-          col2 = 22;
-          col3 = 29;
-        }
-        if(col0==10){
-          col1 = 15;
-          col2 = 23;
-          col3 = 28;
-        }
-        if(col0==11){
-          col1 = 14;
-          col2 = 24;
-          col3 = 27;
-        }
-        if(col0==12){
-          col1 = 13;
-          col2 = 25;
-          col3 = 26;
-        }
-        leds[col0]=CHSV(160, random8(), random8(100,255));
-        leds[col1]=CHSV(160, random8(), random8(100,255));
-        leds[col2]=CHSV(160, random8(), random8(100,255));
-        leds[col3]=CHSV(160, random8(), random8(100,255));
-        break;
-    }
-    col0++;
-    FastLED.show();
-    delay(10);
-    fadeToBlackBy(leds, LED_COUNT, 60);
+void makeWaterfall(int col0StopCounter) {
+  if(col0 > col0StopCounter ) { /*Range typically from 12 to 30, 12 is the short and 20 to 30 is the long*/
+    resetLights();
+    midStep=false;
+    col0 = 0; /* waterfall already completed, reset to 0 */
+  }
+  /*
+  This could be written as a 2D array to represent the different columns of lights, but since a large part of the array would be empty
+  since the lights are mostly on the bottom, it's better performance to keep this as a switch case that then checks for lights as the column counter increases.
+  */
+  switch(col0) {
+    case 0:
+    case 1:
+    case 2:
+    case 3:
+    case 4:
+      leds[col0]=CHSV(160, random8(), random8(100,255));
+      break;
+    case 5:
+    case 6:
+    case 7:
+      /* Neopixels index: 5,20,6,19,7,18*/
+      if(col0==5){
+        col1 = 20;
+      }
+      if(col0==6){
+        col1=19;
+      }
+      if(col0==7){
+        col1=18;
+      }
+      leds[col0]=CHSV(160, random8(), random8(100,255));
+      leds[col1]=CHSV(160, random8(), random8(100,255));
+      break;
+    case 8:
+      /* Neopixels index: 8,17,21 */
+      leds[col0]=CHSV(160, random8(), random8(100,255));
+      leds[17]=CHSV(160, random8(), random8(100,255));
+      leds[21]=CHSV(160, random8(), random8(100,255));
+      break;
+    case 9:
+    case 10:
+    case 11:
+    case 12:
+      /* Neopixels index: 9,16,22,29,10,15,23,28,11,14,24,27,12,13,25,26 */
+      if(col0==9){
+        col1 = 16;
+        col2 = 22;
+        col3 = 29;
+      }
+      if(col0==10){
+        col1 = 15;
+        col2 = 23;
+        col3 = 28;
+      }
+      if(col0==11){
+        col1 = 14;
+        col2 = 24;
+        col3 = 27;
+      }
+      if(col0==12){
+        col1 = 13;
+        col2 = 25;
+        col3 = 26;
+      }
+      leds[col0]=CHSV(160, random8(), random8(100,255));
+      leds[col1]=CHSV(160, random8(), random8(100,255));
+      leds[col2]=CHSV(160, random8(), random8(100,255));
+      leds[col3]=CHSV(160, random8(), random8(100,255));
+      break;
+  }
+  col0++;
+  FastLED.show();
+  delay(10);
+  fadeToBlackBy(leds, LED_COUNT, 60);
 }
-
 
 /* Accelerometer variables */
   bool walkDetected = false;
-  /* Variables for V2 single leg components*/
   int xRaw;
   int yRaw;
   int zRaw;
   int lastXRaw = 0;
   int lastYRaw = 0;
   int lastZRaw = 0;
+
 /**
- * Checks the accelerometer for a single leg of components.
- * returns a boolean, is the leg detected to be walking or not
+ * Checks the accelerometer for movement.
+ * returns a boolean, true if movement is detected in the accelerometer, false otherwise
  */
-bool checkAccelerometerOneLeg() {
+bool detectMovement() {
   walkDetected = false;
   xRaw = readAxis(xInput);
   yRaw = readAxis(yInput);
   zRaw = readAxis(zInput);
-  /* Could look at removing this function for single leg components*/
   if(crossedThreshhold(xRaw, yRaw, zRaw, lastXRaw, lastYRaw, lastZRaw)) {
     walkDetected = true;
   }
@@ -196,6 +207,7 @@ bool checkAccelerometerOneLeg() {
   lastZRaw = zRaw;
   return walkDetected;
 }
+
 /*Read axis variables*/
   long reading;
   int j;
