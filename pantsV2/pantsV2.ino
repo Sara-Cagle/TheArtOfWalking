@@ -15,8 +15,7 @@
 
 // #define buttonPin 6
 // #define buzzerPin 13
-/*
- * pins for single leg*/
+
 #define xInput 9
 #define yInput 7 /* 7 in code but connect to pin 6*/
 #define zInput 12
