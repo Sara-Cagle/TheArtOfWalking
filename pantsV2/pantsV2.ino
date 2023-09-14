@@ -13,52 +13,45 @@
 #include <FastLED.h>
 #include <Wire.h>
 
-#define buttonPin 6
-#define buzzerPin 13
-#define LxInput A0
-#define LyInput A1
-#define LzInput A2
-#define RxInput A3
-#define RyInput A4
-#define RzInput A5
-#define LLEDPin 9
-#define RLEDPin 10
+// #define buttonPin 6
+// #define buzzerPin 13
+/*
+ * pins for single leg*/
+#define xInput 9
+#define yInput 7 /* 7 in code but connect to pin 6*/
+#define zInput 12
+#define LEDPin 10
+
 #define LED_COUNT 30
 #define sampleSize 25
-#define ringHigh 700 /* Highest tone for the buzzer to ring*/
-#define ringLow 500 /* Lowest tone for the buzzer to ring*/
-#define numOfRings 3
-#define ringTime 200
 #define walkAlottedTime 500
 #define blurAmount 2
 
-enum { LEFT, RIGHT } leg = LEFT;
+// #define ringHigh 700 /* Highest tone for the buzzer to ring*/
+// #define ringLow 500 /* Lowest tone for the buzzer to ring*/
+// #define numOfRings 3
+// #define ringTime 200
 
-bool pantsOn = false;
-CRGB ledsL[LED_COUNT];
-CRGB ledsR[LED_COUNT];
+bool pantsOn = true;
 CRGB leds[LED_COUNT]; /*Single leg variable*/
 
 void setup() {
   Serial.begin(9600);
-  pinMode(buzzerPin, OUTPUT);
-  pinMode(buttonPin, INPUT);
+  // pinMode(buzzerPin, OUTPUT);
+  // pinMode(buttonPin, INPUT);
 
   /* Initialize the neopixels using FastLED*/
-  FastLED.addLeds<NEOPIXEL, LLEDPin>(ledsL, LED_COUNT);
-  FastLED.addLeds<NEOPIXEL, RLEDPin>(ledsR, LED_COUNT);
+  FastLED.addLeds<NEOPIXEL, LEDPin>(leds, LED_COUNT);
   FastLED.setBrightness(50);
   for(int blur = 0; blur<blurAmount; blur++){
-    blur1d(ledsL, LED_COUNT, 64); /* Keep value between 50 and 172 for performance purposes*/
-    blur1d(ledsR, LED_COUNT, 64);
+    blur1d(leds, LED_COUNT, 64); /* Keep value between 50 and 172 for performance purposes*/
   }
   
 
   /* Test to confirm strands are working */
-  Serial.println("Checking left and right strands. Should be red for 5 seconds.");
+  Serial.println("Checking strands. Should be red for 5 seconds.");
   for(int testIndex = 0; testIndex<LED_COUNT;testIndex++){
-    ledsL[testIndex] = CHSV(0, 255, 255);
-    ledsR[testIndex] = CHSV(0, 255, 255);
+    leds[testIndex] = CHSV(0, 255, 255);
   }
   FastLED.show();
   delay(5000);
@@ -67,17 +60,13 @@ void setup() {
   delay(20);
 }
 
-bool leftIsWalking = false;
-bool rightIsWalking = false;
-unsigned long leftMotionTimeTaken = 0;
-unsigned long rightMotionTimeTaken = 0;
 unsigned long motionTimeTaken = 0;
 
 void loop() {
   
-  if(buttonPressed()){
-    togglePantsOnOff();
-  }
+  // if(buttonPressed()){
+  //   togglePantsOnOff();
+  // }
   if(pantsOn){
       if(checkAccelerometerOneLeg()){/* Check if walking for a single leg*/
         motionTimeTaken = millis();
@@ -89,200 +78,30 @@ void loop() {
       }
       /*********************************/
       
-      leftIsWalking = checkAccelerometer(true);
-      rightIsWalking = checkAccelerometer(false);
-      
-      if(leftIsWalking){
-        leftMotionTimeTaken = millis();
-        if(millis()-leftMotionTimeTaken<walkAlottedTime) {   
-          makeWaterfall(true);
-        } else {
-          /* don't trigger waterfall, user is still in a single step */
-        }
-      }
-      if(rightIsWalking){
-        rightMotionTimeTaken = millis();
-        if(millis()-rightMotionTimeTaken<walkAlottedTime) {   
-          makeWaterfall(false);
-        } else {
-          /* don't trigger waterfall, user is still in a single step */
-        }
-      }
   }
   delay(10); /* Helps code run smoother*/
 }
 
-/*Waterfall lighting variables*/
-  int waterfallLeftCounter = 0; /* goes from 0 to 12 */
-  int extraL = 0; /* Variables for further light management*/
-  int extraL1 = 0;
-  int extraL2 = 0;
-  int waterfallRightCounter = 0; /* goes from 0 to 12 */
-  int extraR = 0;
-  int extraR1 = 0;
-  int extraR2 = 0;
-/**
-* Creates a light-up waterfall effect for the given leg. The lights turn off when done.
-* bool isLeft: true indicates the left leg and false indicates the right leg
-*/
-void makeWaterfall(bool isLeft) {
-  if(isLeft){
-    if(waterfallLeftCounter > 12 ) {
-      waterfallLeftCounter = 0; /* waterfall already completed, reset to 0 */
-    }
-    switch(waterfallLeftCounter) { /* This section of code can be improved heavily and will be the starting point of my next iteration.*/
-      case 0:
-      case 1:
-      case 2:
-      case 3:
-      case 4:
-        ledsL[waterfallLeftCounter]=CHSV(160, random8(), random8(100,255));
-        break;
-      case 5:
-      case 6:
-      case 7:
-        /* Neopixels index: 5,20,6,19,7,18*/
-        if(waterfallLeftCounter==5){
-          extraL = 20;
-        }
-        if(waterfallLeftCounter==6){
-          extraL=19;
-        }
-        if(waterfallLeftCounter==7){
-          extraL=18;
-        }
-        ledsL[waterfallLeftCounter]=CHSV(160, random8(), random8(100,255));
-        ledsL[extraL]=CHSV(160, random8(), random8(100,255));
-        break;
-      case 8:
-        /* Neopixels index: 8,17,21 */
-        ledsL[waterfallLeftCounter]=CHSV(160, random8(), random8(100,255));
-        ledsL[17]=CHSV(160, random8(), random8(100,255));
-        ledsL[21]=CHSV(160, random8(), random8(100,255));
-        break;
-      case 9:
-      case 10:
-      case 11:
-      case 12:
-        /* Neopixels index: 9,16,22,29,10,15,23,28,11,14,24,27,12,13,25,26 */
-        if(waterfallLeftCounter==9){
-          extraL = 16;
-          extraL1 = 22;
-          extraL2 = 29;
-        }
-        if(waterfallLeftCounter==10){
-          extraL = 15;
-          extraL1 = 23;
-          extraL2 = 28;
-        }
-        if(waterfallLeftCounter==11){
-          extraL = 14;
-          extraL1 = 24;
-          extraL2 = 27;
-        }
-        if(waterfallLeftCounter==12){
-          extraL = 13;
-          extraL1 = 25;
-          extraL2 = 26;
-        }
-        ledsL[waterfallLeftCounter]=CHSV(160, random8(), random8(100,255));
-        ledsL[extraL]=CHSV(160, random8(), random8(100,255));
-        ledsL[extraL1]=CHSV(160, random8(), random8(100,255));
-        ledsL[extraL2]=CHSV(160, random8(), random8(100,255));
-        break;
-    }
-    waterfallLeftCounter++;
-    FastLED.show();
-    delay(10);
-
-  } else {
-    if(waterfallRightCounter > 12 ) {
-      waterfallRightCounter = 0; /* waterfall already completed, reset to 0 */
-    }
-    switch(waterfallRightCounter) {
-      case 0:
-      case 1:
-      case 2:
-      case 3:
-      case 4:
-        ledsR[waterfallRightCounter]=CHSV(160, random8(), random8(100,255));
-        break;
-      case 5:
-      case 6:
-      case 7:
-        /* Neopixels index: 5,20,6,19,7,18*/
-        if(waterfallRightCounter==5){
-          extraR = 20;
-        }
-        if(waterfallRightCounter==6){
-          extraR=19;
-        }
-        if(waterfallRightCounter==7){
-          extraR=18;
-        }
-        ledsR[waterfallRightCounter]=CHSV(160, random8(), random8(100,255));
-        ledsR[extraR]=CHSV(160, random8(), random8(100,255));
-        break;
-      case 8:
-        /* Neopixels index: 8,17,21 */
-        ledsR[waterfallRightCounter]=CHSV(160, random8(), random8(100,255));
-        ledsR[17]=CHSV(160, random8(), random8(100,255));
-        ledsR[21]=CHSV(160, random8(), random8(100,255));
-        break;
-      case 9:
-      case 10:
-      case 11:
-      case 12:
-        /* Neopixels index: 9,16,22,29,10,15,23,28,11,14,24,27,12,13,25,26 */
-        if(waterfallRightCounter==9){
-          extraR = 16;
-          extraR1 = 22;
-          extraR2 = 29;
-        }
-        if(waterfallRightCounter==10){
-          extraR = 15;
-          extraR1 = 23;
-          extraR2 = 28;
-        }
-        if(waterfallRightCounter==11){
-          extraR = 14;
-          extraR1 = 24;
-          extraR2 = 27;
-        }
-        if(waterfallRightCounter==12){
-          extraR = 13;
-          extraR1 = 25;
-          extraR2 = 26;
-        }
-        ledsR[waterfallRightCounter]=CHSV(160, random8(), random8(100,255));
-        ledsR[extraR]=CHSV(160, random8(), random8(100,255));
-        ledsR[extraR1]=CHSV(160, random8(), random8(100,255));
-        ledsR[extraR2]=CHSV(160, random8(), random8(100,255));
-        break;
-    }
-    waterfallRightCounter++;
-    FastLED.show();
-    delay(10);
-  }
-  fadeToBlackBy(ledsL, LED_COUNT, 60);
-  fadeToBlackBy(ledsR, LED_COUNT, 60);
-}
-
-/*Single leg variables*/
-/* Columns of neopixels, all in a single array, but are toggled individually*/
-  int col0 = 0; /* goes from 0 to 12 */
+/** Waterfall lighting variables
+* Columns of neopixels, all in a single array, but are toggled individually
+**/
+  int col0 = 0; /* goes from 0 to 12, the largest stack of lights*/
   int col1 = 0; /* goes from 13 to 20 */
   int col2 = 0; /* goes from 21 to 25 */
   int col3 = 0; /* goes from 26 to 29 */
 
 /**
 * Creates a light-up waterfall effect for a single leg. The lights turn off when done.
-*/
+**/
 void makeWaterfall() {
     if(col0 > 12 ) {
       col0 = 0; /* waterfall already completed, reset to 0 */
     }
-    switch(col0) { /* This section of code can be improved heavily and will be the starting point of my next iteration.*/
+    /*
+    This could be written as a 2D array to represent the different columns of lights, but since a large part of the array would be empty
+    since the lights are mostly on the bottom, it's better performance to keep this as a switch case that then checks for lights as the column counter increases.
+    */
+    switch(col0) {
       case 0:
       case 1:
       case 2:
@@ -351,18 +170,6 @@ void makeWaterfall() {
 
 
 /* Accelerometer variables */
-  int LxRaw;
-  int LyRaw;
-  int LzRaw;
-  int RxRaw;
-  int RyRaw;
-  int RzRaw;
-  int lastLXRaw = 0;
-  int lastLYRaw = 0;
-  int lastLZRaw = 0;
-  int lastRXRaw = 0;
-  int lastRYRaw = 0;
-  int lastRZRaw = 0;
   bool walkDetected = false;
   /* Variables for V2 single leg components*/
   int xRaw;
@@ -372,52 +179,21 @@ void makeWaterfall() {
   int lastYRaw = 0;
   int lastZRaw = 0;
 /**
-* Checks the given accelerometer to see if the leg is stepping or not
-* bool isLeft indicates checking the left leg accelerometer (true) or the right leg (false)
-* returns true if the accelerometer has detected motion for the given leg, false otherwise
-*/
-bool checkAccelerometer(bool isLeft){
-  walkDetected = false;
-  if(isLeft){ /*Left leg*/
-    LxRaw = readAxis(LxInput);
-    LyRaw = readAxis(LyInput);
-    LzRaw = readAxis(LzInput);
-    if(crossedThreshhold(LxRaw, LyRaw, LzRaw, lastLXRaw, lastLYRaw, lastLZRaw)) {
-      walkDetected = true;
-    }
-    lastLXRaw = LxRaw;
-    lastLYRaw = LyRaw;
-    lastLZRaw = LzRaw;
-  } else { /* Right leg*/
-    RxRaw = readAxis(RxInput);
-    RyRaw = readAxis(RyInput);
-    RzRaw = readAxis(RzInput);
-    if(crossedThreshhold(RxRaw, RyRaw, RzRaw, lastRXRaw, lastRYRaw, lastRZRaw)) {
-      walkDetected = true;
-    }
-    lastRXRaw = RxRaw;
-    lastRYRaw = RyRaw;
-    lastRZRaw = RzRaw;
-  }
-  return walkDetected;
-}
-
-/**
  * Checks the accelerometer for a single leg of components.
  * returns a boolean, is the leg detected to be walking or not
  */
 bool checkAccelerometerOneLeg() {
   walkDetected = false;
-    /*xRaw = readAxis(xInput);
-    yRaw = readAxis(yInput);
-    zRaw = readAxis(zInput);*/
-    /* Could look at removing this function for single leg components*/
-    if(crossedThreshhold(xRaw, yRaw, zRaw, lastXRaw, lastYRaw, lastZRaw)) {
-      walkDetected = true;
-    }
-    lastXRaw = xRaw;
-    lastYRaw = yRaw;
-    lastZRaw = zRaw;
+  xRaw = readAxis(xInput);
+  yRaw = readAxis(yInput);
+  zRaw = readAxis(zInput);
+  /* Could look at removing this function for single leg components*/
+  if(crossedThreshhold(xRaw, yRaw, zRaw, lastXRaw, lastYRaw, lastZRaw)) {
+    walkDetected = true;
+  }
+  lastXRaw = xRaw;
+  lastYRaw = yRaw;
+  lastZRaw = zRaw;
   return walkDetected;
 }
 /*Read axis variables*/
@@ -463,77 +239,69 @@ bool crossedThreshhold(int currX, int currY, int currZ, int lastX, int lastY, in
 }
 
 /**
-* Toggles the pants off and on, changing the current state.
-* Will beep correspondingly and print to Serial.
-*/
-void togglePantsOnOff(){
-  pantsOn = !pantsOn;
-  if(pantsOn){
-    Serial.println("Pants are ON");
-  } else {
-    resetLights();
-    Serial.println("Pants are OFF");
-  }
-  ringBuzzer(pantsOn);
-}
-
-/**
 * Resets all of the lights by turning them off and 
 * all associated variables.
 */
 void resetLights() {
   FastLED.clear();
   FastLED.show();
-  waterfallLeftCounter = 0;
-  extraL = 0;
-  extraL1 = 0;
-  extraL2 = 0;
-  waterfallRightCounter = 0;
-  extraR = 0;
-  extraR1 = 0;
-  extraR2 = 0;
   col0 = 0;
   col1 = 0;
   col2 = 0;
   col3 = 0;
 }
 
-/*Buzzer variables */
-  int ringInterval = (ringHigh-ringLow)/(numOfRings-1);
-  int i = 0;
-/**
-* Rings the buzzer,  either in an upward tone or a downward tone.
-* bool ringUp: ring upward or ring downard in tone
-*/
-void ringBuzzer(bool ringUp){
-  if(ringUp){
-    for(i = 0; i< numOfRings; i++){
-      tone(buzzerPin, ringLow+i*ringInterval, ringTime); 
-      delay(ringTime);
-    }
-  } else{
-    for(i = 0; i< numOfRings; i++){
-      tone(buzzerPin, ringHigh-i*ringInterval, ringTime); 
-      delay(ringTime);
-    }
-  }
-}
+// /**
+// * Toggles the pants off and on, changing the current state.
+// * Will beep correspondingly and print to Serial.
+// */
+// void togglePantsOnOff(){
+//   pantsOn = !pantsOn;
+//   if(pantsOn){
+//     Serial.println("Pants are ON");
+//   } else {
+//     resetLights();
+//     Serial.println("Pants are OFF");
+//   }
+//   ringBuzzer(pantsOn);
+// }
 
-/*Button variables*/
-  int buttonState;
-  int lastButtonState;
-/**
-* Checks if the button is pressed.
-* Returns true if pressed, false otherwise.
-*/
-bool buttonPressed(){
-  buttonState = digitalRead(buttonPin);
-  if (buttonState != lastButtonState) {
-    if (buttonState == HIGH) {
-      Serial.println("Button pressed");
-      return true;
-    }
-    lastButtonState = buttonState;
-  }
-  return false;
-}
+// /*Buzzer variables */
+//   int ringInterval = (ringHigh-ringLow)/(numOfRings-1);
+//   int i = 0;
+// /**
+// * Rings the buzzer,  either in an upward tone or a downward tone.
+// * bool ringUp: ring upward or ring downard in tone
+// */
+// void ringBuzzer(bool ringUp){
+//   if(ringUp){
+//     for(i = 0; i< numOfRings; i++){
+//       tone(buzzerPin, ringLow+i*ringInterval, ringTime); 
+//       delay(ringTime);
+//     }
+//   } else{
+//     for(i = 0; i< numOfRings; i++){
+//       tone(buzzerPin, ringHigh-i*ringInterval, ringTime); 
+//       delay(ringTime);
+//     }
+//   }
+// }
+
+// /*Button variables*/
+//   int buttonState;
+//   int lastButtonState;
+// /**
+// * Checks if the button is pressed.
+// * Returns true if pressed, false otherwise.
+// */
+// bool buttonPressed(){
+//   buttonState = digitalRead(buttonPin);
+//   if (buttonState != lastButtonState) {
+//     if (buttonState == HIGH) {
+//       Serial.println("Button pressed");
+//       return true;
+//     }
+//     lastButtonState = buttonState;
+//   }
+//   return false;
+// }
